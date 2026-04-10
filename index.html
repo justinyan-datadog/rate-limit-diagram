@@ -4,46 +4,80 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Monthly Quotas & Burst Limit Upgrade Products</title>
-  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@excalidraw/excalidraw@0.18.0/dist/browser/dev/index.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #fff; }
-    .loading { display: flex; align-items: center; justify-content: center; height: 100vh; font-family: system-ui; color: #64748b; font-size: 18px; }
+    body {
+      min-height: 100vh;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .container {
+      max-width: 1200px;
+      width: 100%;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
+      overflow: hidden;
+    }
+    .header {
+      padding: 20px 28px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    .header a {
+      font-size: 13px;
+      color: #3b82f6;
+      text-decoration: none;
+      padding: 6px 14px;
+      border: 1px solid #3b82f6;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .header a:hover { background: #eff6ff; }
+    img {
+      width: 100%;
+      height: auto;
+      display: block;
+      cursor: zoom-in;
+    }
+    img.zoomed {
+      cursor: zoom-out;
+      max-width: none;
+      width: auto;
+    }
+    .img-wrap {
+      overflow: auto;
+      max-height: calc(100vh - 120px);
+    }
   </style>
 </head>
 <body>
-  <div id="root"><div class="loading">Loading diagram…</div></div>
+  <div class="container">
+    <div class="header">
+      <h1>Monthly Quotas & Burst Limit Upgrade Products</h1>
+      <a href="https://excalidraw.com/#json=_EXCALIDRAW_" target="_blank" rel="noopener">Open in Excalidraw</a>
+    </div>
+    <div class="img-wrap" id="wrap">
+      <img src="./diagram.png" alt="Rate Limit Quotas & Burst Limit Upgrade Products diagram" id="diagram" />
+    </div>
+  </div>
   <script>
-    (async function() {
-      try {
-        const resp = await fetch("./diagram.excalidraw");
-        const data = await resp.json();
-        const elements = (data.elements || []).filter(function(e) { return !e.isDeleted; });
-        const appState = Object.assign({}, data.appState, {
-          viewModeEnabled: true,
-          zenModeEnabled: true,
-          theme: "light"
-        });
-
-        var h = React.createElement;
-        var root = ReactDOM.createRoot(document.getElementById("root"));
-        root.render(
-          h("div", { style: { width: "100vw", height: "100vh" } },
-            h(ExcalidrawLib.Excalidraw, {
-              initialData: { elements: elements, appState: appState, files: data.files || {} },
-              viewModeEnabled: true,
-              zenModeEnabled: true,
-              theme: "light"
-            })
-          )
-        );
-      } catch (err) {
-        document.getElementById("root").innerHTML =
-          '<div class="loading">Failed to load diagram: ' + err.message + '</div>';
-      }
-    })();
+    var img = document.getElementById("diagram");
+    var wrap = document.getElementById("wrap");
+    img.addEventListener("click", function() {
+      img.classList.toggle("zoomed");
+    });
   </script>
 </body>
 </html>
