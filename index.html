@@ -2,82 +2,189 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Monthly Quotas & Burst Limit Upgrade Products</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      min-height: 100vh;
-      background: #f8fafc;
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f0f0; }
+    canvas { display: block; cursor: grab; }
+    canvas.grabbing { cursor: grabbing; }
+    .controls {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      gap: 4px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      padding: 4px;
+      z-index: 10;
+      user-select: none;
+    }
+    .controls button {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      font-size: 18px;
+      cursor: pointer;
+      color: #374151;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
-      font-family: system-ui, -apple-system, sans-serif;
+      transition: background 0.1s;
     }
-    .container {
-      max-width: 1200px;
-      width: 100%;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
-      overflow: hidden;
-    }
-    .header {
-      padding: 20px 28px;
-      border-bottom: 1px solid #e2e8f0;
+    .controls button:hover { background: #f1f5f9; }
+    .controls .sep { width: 1px; background: #e2e8f0; margin: 4px 2px; }
+    .zoom-label {
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
+      color: #64748b;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-    }
-    .header h1 {
-      font-size: 18px;
-      font-weight: 600;
-      color: #1e293b;
-    }
-    .header a {
-      font-size: 13px;
-      color: #3b82f6;
-      text-decoration: none;
-      padding: 6px 14px;
-      border: 1px solid #3b82f6;
-      border-radius: 6px;
-      transition: background 0.15s;
-    }
-    .header a:hover { background: #eff6ff; }
-    img {
-      width: 100%;
-      height: auto;
-      display: block;
-      cursor: zoom-in;
-    }
-    img.zoomed {
-      cursor: zoom-out;
-      max-width: none;
-      width: auto;
-    }
-    .img-wrap {
-      overflow: auto;
-      max-height: calc(100vh - 120px);
+      padding: 0 8px;
+      min-width: 44px;
+      justify-content: center;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>Monthly Quotas & Burst Limit Upgrade Products</h1>
-      <a href="https://excalidraw.com/#json=_EXCALIDRAW_" target="_blank" rel="noopener">Open in Excalidraw</a>
-    </div>
-    <div class="img-wrap" id="wrap">
-      <img src="./diagram.png" alt="Rate Limit Quotas & Burst Limit Upgrade Products diagram" id="diagram" />
-    </div>
+  <canvas id="canvas"></canvas>
+  <div class="controls">
+    <button id="zoomIn" title="Zoom in">+</button>
+    <span class="zoom-label" id="zoomLabel">100%</span>
+    <button id="zoomOut" title="Zoom out">&minus;</button>
+    <div class="sep"></div>
+    <button id="fit" title="Fit to screen">&#x2922;</button>
+    <button id="reset" title="Reset zoom">1:1</button>
   </div>
+
   <script>
-    var img = document.getElementById("diagram");
-    var wrap = document.getElementById("wrap");
-    img.addEventListener("click", function() {
-      img.classList.toggle("zoomed");
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
+    var img = new Image();
+
+    var state = { x: 0, y: 0, scale: 1 };
+    var drag = { active: false, startX: 0, startY: 0, originX: 0, originY: 0 };
+    var dpr = window.devicePixelRatio || 1;
+
+    function resize() {
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
+      draw();
+    }
+
+    function draw() {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      drawGrid();
+
+      ctx.setTransform(
+        state.scale * dpr, 0, 0, state.scale * dpr,
+        state.x * dpr, state.y * dpr
+      );
+
+      if (img.complete && img.naturalWidth) {
+        ctx.drawImage(img, 0, 0);
+      }
+
+      updateLabel();
+    }
+
+    function drawGrid() {
+      var gridSize = 20 * state.scale * dpr;
+      if (gridSize < 8) return;
+
+      var offsetX = (state.x * dpr) % gridSize;
+      var offsetY = (state.y * dpr) % gridSize;
+
+      ctx.strokeStyle = "rgba(0,0,0,0.06)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (var x = offsetX; x < canvas.width; x += gridSize) {
+        ctx.moveTo(Math.round(x) + 0.5, 0);
+        ctx.lineTo(Math.round(x) + 0.5, canvas.height);
+      }
+      for (var y = offsetY; y < canvas.height; y += gridSize) {
+        ctx.moveTo(0, Math.round(y) + 0.5);
+        ctx.lineTo(canvas.width, Math.round(y) + 0.5);
+      }
+      ctx.stroke();
+    }
+
+    function updateLabel() {
+      document.getElementById("zoomLabel").textContent = Math.round(state.scale * 100) + "%";
+    }
+
+    function fitToScreen() {
+      if (!img.naturalWidth) return;
+      var pad = 60;
+      var w = window.innerWidth - pad * 2;
+      var h = window.innerHeight - pad * 2;
+      state.scale = Math.min(w / img.naturalWidth, h / img.naturalHeight, 2);
+      state.x = (window.innerWidth - img.naturalWidth * state.scale) / 2;
+      state.y = (window.innerHeight - img.naturalHeight * state.scale) / 2;
+      draw();
+    }
+
+    function zoomTo(newScale, cx, cy) {
+      cx = cx || window.innerWidth / 2;
+      cy = cy || window.innerHeight / 2;
+      newScale = Math.max(0.1, Math.min(5, newScale));
+      var ratio = newScale / state.scale;
+      state.x = cx - ratio * (cx - state.x);
+      state.y = cy - ratio * (cy - state.y);
+      state.scale = newScale;
+      draw();
+    }
+
+    canvas.addEventListener("pointerdown", function(e) {
+      drag.active = true;
+      drag.startX = e.clientX;
+      drag.startY = e.clientY;
+      drag.originX = state.x;
+      drag.originY = state.y;
+      canvas.classList.add("grabbing");
+      canvas.setPointerCapture(e.pointerId);
     });
+
+    canvas.addEventListener("pointermove", function(e) {
+      if (!drag.active) return;
+      state.x = drag.originX + (e.clientX - drag.startX);
+      state.y = drag.originY + (e.clientY - drag.startY);
+      draw();
+    });
+
+    canvas.addEventListener("pointerup", function() {
+      drag.active = false;
+      canvas.classList.remove("grabbing");
+    });
+
+    canvas.addEventListener("wheel", function(e) {
+      e.preventDefault();
+      var delta = e.deltaY > 0 ? 0.9 : 1.1;
+      zoomTo(state.scale * delta, e.clientX, e.clientY);
+    }, { passive: false });
+
+    document.getElementById("zoomIn").addEventListener("click", function() { zoomTo(state.scale * 1.25); });
+    document.getElementById("zoomOut").addEventListener("click", function() { zoomTo(state.scale / 1.25); });
+    document.getElementById("fit").addEventListener("click", fitToScreen);
+    document.getElementById("reset").addEventListener("click", function() {
+      state.scale = 1;
+      state.x = (window.innerWidth - img.naturalWidth) / 2;
+      state.y = (window.innerHeight - img.naturalHeight) / 2;
+      draw();
+    });
+
+    window.addEventListener("resize", resize);
+
+    img.onload = function() { resize(); fitToScreen(); };
+    img.src = "./diagram.png";
   </script>
 </body>
 </html>
